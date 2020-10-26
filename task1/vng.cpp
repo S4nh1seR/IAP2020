@@ -11,42 +11,45 @@ VNG::VNG(const CGrayImage& grayCFAImage) :
         cfaBuffer(reinterpret_cast<const uint8_t*>(grayCFAImage.GetBuffer()))
 {
     for (size_t longGradientIndex = 0; longGradientIndex < LGO_Count; ++longGradientIndex) {
-        verticalGradient[longGradientIndex] = new uint8_t[width];
+        verticalGradient[longGradientIndex] = new uint8_t[width + 2];
         horizontalGradient[longGradientIndex] = new uint8_t[width + 2];
         rightDiagonalLongGradient[longGradientIndex] = new uint8_t[width];
         leftDiagonalLongGradient[longGradientIndex] = new uint8_t[width];
-        memset(verticalGradient[longGradientIndex], 0, width);
+        memset(verticalGradient[longGradientIndex]++, 0, width + 2);
         memset(horizontalGradient[longGradientIndex], 0, width + 2);
         memset(rightDiagonalLongGradient[longGradientIndex], 0, width);
         memset(leftDiagonalLongGradient[longGradientIndex], 0, width);
     }
     for (size_t shortGradientIndex = 0; shortGradientIndex < SGO_Count; ++shortGradientIndex) {
-        leftDiagonalShortGradient[shortGradientIndex] = new uint8_t[width];
-        rightDiagonalShortGradient[shortGradientIndex] = new uint8_t[width];
-        memset(leftDiagonalShortGradient[shortGradientIndex], 0, width);
-        memset(rightDiagonalShortGradient[shortGradientIndex], 0, width);
+        leftDiagonalShortGradient[shortGradientIndex] = new uint8_t[width + 2];
+        rightDiagonalShortGradient[shortGradientIndex] = new uint8_t[width + 2];
+        memset(leftDiagonalShortGradient[shortGradientIndex]++, 0, width + 2);
+        memset(rightDiagonalShortGradient[shortGradientIndex]++, 0, width + 2);
     }
 }
 
 VNG::~VNG() {
     for (size_t longGradientIndex = 0; longGradientIndex < LGO_Count; ++longGradientIndex) {
-        delete [] verticalGradient[longGradientIndex];
+        delete [] --verticalGradient[longGradientIndex];
         delete [] horizontalGradient[longGradientIndex];
         delete [] rightDiagonalLongGradient[longGradientIndex];
         delete [] leftDiagonalLongGradient[longGradientIndex];
     }
     for (size_t shortGradientIndex = 0; shortGradientIndex < SGO_Count; ++shortGradientIndex) {
-        delete [] leftDiagonalShortGradient[shortGradientIndex];
-        delete [] rightDiagonalShortGradient[shortGradientIndex];
+        delete [] --leftDiagonalShortGradient[shortGradientIndex];
+        delete [] --rightDiagonalShortGradient[shortGradientIndex];
     }
+    delete [] cfaExpanded;
 }
 
 std::shared_ptr<CRGBImage> VNG::RecoverImage() {
     std::shared_ptr<CRGBImage> recoveredImage(new CRGBImage(height, width));
     CRGBValue* recoveredBuffer = recoveredImage->GetBuffer();
 
+    prepareExpandedImage();
+
     for (size_t lineIndex = 0; lineIndex < LO_Count; ++lineIndex) {
-        cfaLines[lineIndex] = cfaBuffer + lineIndex * width;
+        cfaLines[lineIndex] = cfaExpanded + (lineIndex) * (width + 4) + 2;
     }
 
     calcVerticalGradient(cfaLines[LO_BeforePrev], cfaLines[LO_Curr], LGO_Top);
@@ -56,12 +59,10 @@ std::shared_ptr<CRGBImage> VNG::RecoverImage() {
 
     const bool isShort = true;
     const bool isLeft = true;
-
     calcDiagonalGradient(cfaLines[LO_BeforePrev], cfaLines[LO_Curr], !isShort, !isLeft, LGO_Top);
     calcDiagonalGradient(cfaLines[LO_BeforePrev], cfaLines[LO_Curr], !isShort, isLeft, LGO_Top);
     calcDiagonalGradient(cfaLines[LO_Prev], cfaLines[LO_Next], !isShort, !isLeft, LGO_Mid);
     calcDiagonalGradient(cfaLines[LO_Prev], cfaLines[LO_Next], !isShort, isLeft, LGO_Mid);
-
     calcDiagonalGradient(cfaLines[LO_BeforePrev], cfaLines[LO_Prev], isShort, isLeft, SGO_Top);
     calcDiagonalGradient(cfaLines[LO_Prev], cfaLines[LO_Curr], isShort, isLeft, SGO_MidTop);
     calcDiagonalGradient(cfaLines[LO_Curr], cfaLines[LO_Next], isShort, isLeft, SGO_MidBot);
@@ -69,9 +70,10 @@ std::shared_ptr<CRGBImage> VNG::RecoverImage() {
     calcDiagonalGradient(cfaLines[LO_Prev], cfaLines[LO_Curr], isShort, !isLeft, SGO_MidTop);
     calcDiagonalGradient(cfaLines[LO_Curr], cfaLines[LO_Next], isShort, !isLeft, SGO_MidBot);
 
-    currRecoveredLine = recoveredBuffer + width * 2;
 
-    for (size_t rowIndex = 2; rowIndex < height - 2; ++rowIndex, currRecoveredLine += width) {
+    currRecoveredLine = recoveredBuffer;
+
+    for (size_t rowIndex = 0; rowIndex < height; ++rowIndex, currRecoveredLine += width) {
         const bool isRedGreenLine = (rowIndex % 2 == 0);
         updateGradients();
 
@@ -80,12 +82,12 @@ std::shared_ptr<CRGBImage> VNG::RecoverImage() {
         const TRGBComponent horizontalOtherColor = isRedGreenLine ? RGBC_Red : RGBC_Blue;
         const TRGBComponent verticalOtherColor = isRedGreenLine ? RGBC_Blue : RGBC_Red;
 
-        for (size_t columnIndex = 2 + greenOffset; columnIndex < width - 2; columnIndex += 2) {
+        for (size_t columnIndex = greenOffset; columnIndex < width; columnIndex += 2) {
             calcDirectionGradientsForGreen(columnIndex);
             const uint32_t gradientThreshold = getGradientThreshold();
             interpolateColorsForGreen(columnIndex, gradientThreshold, horizontalOtherColor, verticalOtherColor);
         }
-        for (size_t columnIndex = 2 + otherOffset; columnIndex < width - 2; columnIndex += 2) {
+        for (size_t columnIndex = otherOffset; columnIndex < width; columnIndex += 2) {
             calcDirectionGradientsForNotGreen(columnIndex);
             const uint32_t gradientThreshold = getGradientThreshold();
             interpolateColorsForNotGreen(columnIndex, gradientThreshold, horizontalOtherColor, verticalOtherColor);
@@ -93,6 +95,49 @@ std::shared_ptr<CRGBImage> VNG::RecoverImage() {
         moveCache();
     }
     return recoveredImage;
+}
+
+void VNG::prepareExpandedImage() {
+    cfaExpanded = new uint8_t[(width + 4) * (height + 4)];
+
+    // первые две строки
+    cfaExpanded[0] = cfaBuffer[0];
+    cfaExpanded[1] = cfaBuffer[1];
+    std::memcpy(cfaExpanded + 2, cfaBuffer, sizeof(uint8_t) * width);
+    cfaExpanded[width + 2] = cfaExpanded[width];
+    cfaExpanded[width + 3] = cfaExpanded[width + 1];
+    uint8_t* cfaMoved = cfaExpanded + (width + 4);
+    const uint8_t* cfaSrc = cfaBuffer + width;
+    cfaMoved[0] = cfaSrc[0];
+    cfaMoved[1] = cfaSrc[1];
+    std::memcpy(cfaMoved + 2, cfaSrc, sizeof(uint8_t) * width);
+    cfaMoved[width + 2] = cfaMoved[width];
+    cfaMoved[width + 3] = cfaMoved[width + 1];
+    cfaMoved += (width + 4);
+    cfaSrc = cfaBuffer;
+    for (size_t rowIndex = 0; rowIndex < height; ++rowIndex) {
+        cfaMoved[0] = cfaSrc[0];
+        cfaMoved[1] = cfaSrc[1];
+        std::memcpy(cfaMoved + 2, cfaSrc, sizeof(uint8_t) * width);
+        cfaMoved[width + 2] = cfaMoved[width];
+        cfaMoved[width + 3] = cfaMoved[width + 1];
+        cfaMoved += (width + 4);
+        cfaSrc += width;
+    }
+    cfaSrc -= 2 * width;
+    cfaMoved[0] = cfaSrc[0];
+    cfaMoved[1] = cfaSrc[1];
+    std::memcpy(cfaMoved + 2, cfaSrc, sizeof(uint8_t) * width);
+    cfaMoved[width + 2] = cfaMoved[width];
+    cfaMoved[width + 3] = cfaMoved[width + 1];
+    cfaMoved += (width + 4);
+    cfaSrc += width;
+    cfaMoved[0] = cfaSrc[0];
+    cfaMoved[1] = cfaSrc[1];
+    std::memcpy(cfaMoved + 2, cfaSrc, sizeof(uint8_t) * width);
+    cfaMoved[width + 2] = cfaMoved[width];
+    cfaMoved[width + 3] = cfaMoved[width + 1];
+    assert(cfaMoved + (width + 4) - cfaExpanded == (width + 4) * (height + 4));
 }
 
 // Подсчитываем новые градиенты
@@ -124,43 +169,49 @@ void VNG::moveCache() {
     for (size_t lineIndex = 0; lineIndex < LO_Count - 1; ++lineIndex) {
         std::swap(cfaLines[lineIndex], cfaLines[lineIndex + 1]);
     }
-    cfaLines[LO_Count - 1] = cfaLines[LO_Count - 2] + width;
+    cfaLines[LO_Count - 1] = cfaLines[LO_Count - 2] + (width + 4);
 }
 
 // Интерполяция не зеленых точек
 void VNG::interpolateColorsForNotGreen(size_t columnIndex, uint32_t gradientThreshold, TRGBComponent centralColor,
     TRGBComponent otherNotGreenColor)
 {
-    size_t gradientsNumber = 0;
-    uint16_t colorSum[RGBC_Count] = {0, 0, 0};
+    if (gradientThreshold == 0) {
+        currRecoveredLine[columnIndex][centralColor] = {cfaLines[LO_Curr][columnIndex]};
+        currRecoveredLine[columnIndex][otherNotGreenColor] = {cfaLines[LO_Prev][columnIndex + 1]};
+        currRecoveredLine[columnIndex][RGBC_Green] = {cfaLines[LO_Curr][columnIndex - 1]};
+        return;
+    }
+    int gradientsNumber = 0;
+    int colorSum[RGBC_Count] = {0, 0, 0};
 
     if (directionGradients[BGD_NorthWest] <= gradientThreshold) {
         ++gradientsNumber;
         colorSum[otherNotGreenColor] += cfaLines[LO_Prev][columnIndex - 1];
         colorSum[centralColor] += (cfaLines[LO_Curr][columnIndex] + cfaLines[LO_BeforePrev][columnIndex - 2]) / 2;
         colorSum[RGBC_Green] += (cfaLines[LO_Prev][columnIndex - 2] + cfaLines[LO_Prev][columnIndex] +
-                cfaLines[LO_Curr][columnIndex - 1] + cfaLines[LO_BeforePrev][columnIndex - 1]) / 4;
+            cfaLines[LO_Curr][columnIndex - 1] + cfaLines[LO_BeforePrev][columnIndex - 1]) / 4;
     }
     if (directionGradients[BGD_NorthEast] <= gradientThreshold) {
         ++gradientsNumber;
         colorSum[otherNotGreenColor] += cfaLines[LO_Prev][columnIndex + 1];
         colorSum[centralColor] += (cfaLines[LO_Curr][columnIndex] + cfaLines[LO_BeforePrev][columnIndex + 2]) / 2;
         colorSum[RGBC_Green] += (cfaLines[LO_Prev][columnIndex + 2] + cfaLines[LO_Prev][columnIndex] +
-                cfaLines[LO_Curr][columnIndex + 1] + cfaLines[LO_BeforePrev][columnIndex + 1]) / 4;
+            cfaLines[LO_Curr][columnIndex + 1] + cfaLines[LO_BeforePrev][columnIndex + 1]) / 4;
     }
     if (directionGradients[BGD_SouthWest] <= gradientThreshold) {
         ++gradientsNumber;
         colorSum[otherNotGreenColor] += cfaLines[LO_Next][columnIndex - 1];
         colorSum[centralColor] += (cfaLines[LO_Curr][columnIndex] + cfaLines[LO_AfterNext][columnIndex - 2]) / 2;
         colorSum[RGBC_Green] += (cfaLines[LO_Next][columnIndex - 2] + cfaLines[LO_Next][columnIndex] +
-                cfaLines[LO_Curr][columnIndex - 1] + cfaLines[LO_AfterNext][columnIndex - 1]) / 4;
+            cfaLines[LO_Curr][columnIndex - 1] + cfaLines[LO_AfterNext][columnIndex - 1]) / 4;
     }
     if (directionGradients[BGD_SouthEast] <= gradientThreshold) {
         ++gradientsNumber;
         colorSum[otherNotGreenColor] += cfaLines[LO_Next][columnIndex + 1];
         colorSum[centralColor] += (cfaLines[LO_Curr][columnIndex] + cfaLines[LO_AfterNext][columnIndex + 2]) / 2;
         colorSum[RGBC_Green] += (cfaLines[LO_Next][columnIndex + 2] + cfaLines[LO_Next][columnIndex] +
-                cfaLines[LO_Curr][columnIndex + 1] + cfaLines[LO_AfterNext][columnIndex + 1]) / 4;
+            cfaLines[LO_Curr][columnIndex + 1] + cfaLines[LO_AfterNext][columnIndex + 1]) / 4;
     }
     if (directionGradients[BGD_North] <= gradientThreshold) {
         ++gradientsNumber;
@@ -190,14 +241,22 @@ void VNG::interpolateColorsForNotGreen(size_t columnIndex, uint32_t gradientThre
     currRecoveredLine[columnIndex][centralColor] = {cfaLines[LO_Curr][columnIndex]};
     currRecoveredLine[columnIndex][otherNotGreenColor] = {color_cast(cfaLines[LO_Curr][columnIndex] + (colorSum[otherNotGreenColor] - colorSum[centralColor]) / gradientsNumber)};
     currRecoveredLine[columnIndex][RGBC_Green] = {color_cast(cfaLines[LO_Curr][columnIndex] + (colorSum[RGBC_Green] - colorSum[centralColor]) / gradientsNumber)};
+
 }
 
 // Интерполяция зеленых точек
 void VNG::interpolateColorsForGreen(size_t columnIndex, uint32_t gradientThreshold, TRGBComponent horizontalOtherColor,
     TRGBComponent verticalOtherColor)
 {
-    size_t gradientsNumber = 0;
-    uint16_t colorSum[RGBC_Count] = {0, 0, 0};
+    if (gradientThreshold == 0) {
+        currRecoveredLine[columnIndex][RGBC_Green] = {cfaLines[LO_Curr][columnIndex]};
+        currRecoveredLine[columnIndex][verticalOtherColor] = {cfaLines[LO_Prev][columnIndex]};
+        currRecoveredLine[columnIndex][horizontalOtherColor] = {cfaLines[LO_Curr][columnIndex - 1]};
+        return;
+    }
+
+    int gradientsNumber = 0;
+    int colorSum[RGBC_Count] = {0, 0, 0};
 
     if (directionGradients[BGD_NorthWest] <= gradientThreshold) {
         ++gradientsNumber;
@@ -227,28 +286,28 @@ void VNG::interpolateColorsForGreen(size_t columnIndex, uint32_t gradientThresho
         ++gradientsNumber;
         colorSum[verticalOtherColor] += cfaLines[LO_Prev][columnIndex];
         colorSum[horizontalOtherColor] += (cfaLines[LO_Curr][columnIndex - 1] + cfaLines[LO_Curr][columnIndex + 1] +
-                cfaLines[LO_BeforePrev][columnIndex - 1] + cfaLines[LO_BeforePrev][columnIndex + 1]) / 4;
+            cfaLines[LO_BeforePrev][columnIndex - 1] + cfaLines[LO_BeforePrev][columnIndex + 1]) / 4;
         colorSum[RGBC_Green] += (cfaLines[LO_Curr][columnIndex] + cfaLines[LO_BeforePrev][columnIndex]) / 2;
     }
     if (directionGradients[BGD_South] <= gradientThreshold) {
         ++gradientsNumber;
         colorSum[verticalOtherColor] += cfaLines[LO_Next][columnIndex - 1];
         colorSum[horizontalOtherColor] += (cfaLines[LO_Curr][columnIndex - 1] + cfaLines[LO_Curr][columnIndex + 1] +
-                cfaLines[LO_AfterNext][columnIndex - 1] + cfaLines[LO_AfterNext][columnIndex + 1]) / 4;
+            cfaLines[LO_AfterNext][columnIndex - 1] + cfaLines[LO_AfterNext][columnIndex + 1]) / 4;
         colorSum[RGBC_Green] += (cfaLines[LO_Curr][columnIndex] + cfaLines[LO_AfterNext][columnIndex]) / 2;
     }
     if (directionGradients[BGD_West] <= gradientThreshold) {
         ++gradientsNumber;
         colorSum[horizontalOtherColor] += cfaLines[LO_Curr][columnIndex - 1];
         colorSum[verticalOtherColor] += (cfaLines[LO_Prev][columnIndex] + cfaLines[LO_Prev][columnIndex - 2] +
-                cfaLines[LO_Next][columnIndex] + cfaLines[LO_Next][columnIndex - 2]) / 4;
+            cfaLines[LO_Next][columnIndex] + cfaLines[LO_Next][columnIndex - 2]) / 4;
         colorSum[RGBC_Green] += (cfaLines[LO_Curr][columnIndex] + cfaLines[LO_Curr][columnIndex - 2]) / 2;
     }
     if (directionGradients[BGD_East] <= gradientThreshold) {
         ++gradientsNumber;
         colorSum[horizontalOtherColor] += cfaLines[LO_Curr][columnIndex + 1];
         colorSum[verticalOtherColor] += (cfaLines[LO_Prev][columnIndex] + cfaLines[LO_Prev][columnIndex + 2] +
-                cfaLines[LO_Next][columnIndex] + cfaLines[LO_Next][columnIndex + 2]) / 4;
+            cfaLines[LO_Next][columnIndex] + cfaLines[LO_Next][columnIndex + 2]) / 4;
         colorSum[RGBC_Green] += (cfaLines[LO_Curr][columnIndex] + cfaLines[LO_Curr][columnIndex + 2]) / 2;
     }
 
@@ -269,12 +328,7 @@ uint32_t VNG::getGradientThreshold() const {
             maxGradient = directionGradients[directionIndex];
         }
     }
-    //return (minGradient + maxGradient / 2u);
-   // return ((4u * minGradient + maxGradient) >> 1u);
-    //return minGradient * 300; //+ (maxGradient) / 15;
-
-    return std::numeric_limits<uint32_t>::max();
-   // return ((4u * minGradient + maxGradient) >> 1u);
+    return (minGradient + maxGradient / 2);
 }
 
 // Подсчет вертикального градиента
@@ -296,30 +350,28 @@ void VNG::calcDiagonalGradient(const uint8_t* firstLine, const uint8_t* secondLi
     size_t gradIndex)
 {
     if (!isShort && isLeft) {
-        for (size_t columnIndex = 2; columnIndex < width; ++columnIndex) {
+        for (size_t columnIndex = 0; columnIndex < width; ++columnIndex) {
             leftDiagonalLongGradient[gradIndex][columnIndex] = std::abs(secondLine[columnIndex] - firstLine[columnIndex - 2]);
         }
-        leftDiagonalLongGradient[gradIndex][0] = std::abs(secondLine[0] - firstLine[0]);
-        leftDiagonalLongGradient[gradIndex][1] = std::abs(secondLine[1] - firstLine[1]);
     }
     if (!isShort && !isLeft) {
-        for (size_t columnIndex = 0; columnIndex < width - 2; ++columnIndex) {
+        for (size_t columnIndex = 0; columnIndex < width; ++columnIndex) {
             rightDiagonalLongGradient[gradIndex][columnIndex] = std::abs(secondLine[columnIndex] - firstLine[columnIndex + 2]);
         }
-        rightDiagonalLongGradient[gradIndex][width - 1] = std::abs(secondLine[width - 1] - firstLine[width - 1]);
-        rightDiagonalLongGradient[gradIndex][width - 2] = std::abs(secondLine[width - 2] - firstLine[width - 2]);
     }
     if (isShort && isLeft) {
-        for (size_t columnIndex = 1; columnIndex < width; ++columnIndex) {
+        for (size_t columnIndex = 0; columnIndex < width; ++columnIndex) {
             leftDiagonalShortGradient[gradIndex][columnIndex] = std::abs(secondLine[columnIndex] - firstLine[columnIndex - 1]);
         }
-        leftDiagonalShortGradient[gradIndex][0] = std::abs(secondLine[0] - firstLine[1]);
+        leftDiagonalShortGradient[gradIndex][-1] = std::abs(secondLine[-1] - firstLine[-2]);
+        leftDiagonalShortGradient[gradIndex][width] = std::abs(secondLine[width] - firstLine[width - 1]);
     }
     if (isShort && !isLeft) {
-        for (size_t columnIndex = 0; columnIndex < width - 1; ++columnIndex) {
+        for (size_t columnIndex = 0; columnIndex < width; ++columnIndex) {
             rightDiagonalShortGradient[gradIndex][columnIndex] = std::abs(secondLine[columnIndex] - firstLine[columnIndex + 1]);
         }
-        rightDiagonalShortGradient[gradIndex][width - 1] = std::abs(secondLine[width - 1] - firstLine[width - 2]);
+        rightDiagonalShortGradient[gradIndex][-1] = std::abs(secondLine[-1] - firstLine[0]);
+        rightDiagonalShortGradient[gradIndex][width] = std::abs(secondLine[width] - firstLine[width + 1]);
     }
 }
 
@@ -327,46 +379,46 @@ void VNG::calcDiagonalGradient(const uint8_t* firstLine, const uint8_t* secondLi
 void VNG::calcDirectionGradientsForGreen(size_t columnIndex) {
     calcNonDiagonalDirectionGradients(columnIndex);
     directionGradients[BGD_NorthWest] = leftDiagonalLongGradient[LGO_Top][columnIndex] + leftDiagonalLongGradient[LGO_Top][columnIndex + 1] +
-            leftDiagonalLongGradient[LGO_Mid][columnIndex + 1] + leftDiagonalLongGradient[LGO_Mid][columnIndex];
+        leftDiagonalLongGradient[LGO_Mid][columnIndex + 1] + leftDiagonalLongGradient[LGO_Mid][columnIndex];
     directionGradients[BGD_NorthEast] = rightDiagonalLongGradient[LGO_Mid][columnIndex - 1] + rightDiagonalLongGradient[LGO_Top][columnIndex] +
-            rightDiagonalLongGradient[LGO_Top][columnIndex - 1] + rightDiagonalLongGradient[LGO_Mid][columnIndex];
+        rightDiagonalLongGradient[LGO_Top][columnIndex - 1] + rightDiagonalLongGradient[LGO_Mid][columnIndex];
     directionGradients[BGD_SouthWest] = rightDiagonalLongGradient[LGO_Mid][columnIndex - 1] + rightDiagonalLongGradient[LGO_Bot][columnIndex - 2] +
-            rightDiagonalLongGradient[LGO_Bot][columnIndex - 1] + rightDiagonalLongGradient[LGO_Mid][columnIndex - 2];
+        rightDiagonalLongGradient[LGO_Bot][columnIndex - 1] + rightDiagonalLongGradient[LGO_Mid][columnIndex - 2];
     directionGradients[BGD_SouthEast] = leftDiagonalLongGradient[LGO_Mid][columnIndex + 1] + leftDiagonalLongGradient[LGO_Mid][columnIndex + 2] +
-            leftDiagonalLongGradient[LGO_Bot][columnIndex + 1] + leftDiagonalLongGradient[LGO_Bot][columnIndex + 2];
+        leftDiagonalLongGradient[LGO_Bot][columnIndex + 1] + leftDiagonalLongGradient[LGO_Bot][columnIndex + 2];
 }
 
 // Подсчет градиентов по направлениям в незеленой точке
 void VNG::calcDirectionGradientsForNotGreen(size_t columnIndex) {
     calcNonDiagonalDirectionGradients(columnIndex);
     directionGradients[BGD_NorthWest] = leftDiagonalLongGradient[LGO_Mid][columnIndex + 1] + leftDiagonalLongGradient[LGO_Top][columnIndex] +
-            (leftDiagonalShortGradient[SGO_Top][columnIndex] + leftDiagonalShortGradient[SGO_MidTop][columnIndex - 1] +
-            leftDiagonalShortGradient[SGO_MidTop][columnIndex + 1] + leftDiagonalShortGradient[SGO_MidBot][columnIndex]) / 2;
+        (leftDiagonalShortGradient[SGO_Top][columnIndex] + leftDiagonalShortGradient[SGO_MidTop][columnIndex - 1] +
+        leftDiagonalShortGradient[SGO_MidTop][columnIndex + 1] + leftDiagonalShortGradient[SGO_MidBot][columnIndex]) / 2;
     directionGradients[BGD_NorthEast] = rightDiagonalLongGradient[LGO_Mid][columnIndex - 1] + rightDiagonalLongGradient[LGO_Top][columnIndex] +
-            (rightDiagonalShortGradient[SGO_MidTop][columnIndex - 1] + rightDiagonalShortGradient[SGO_MidTop][columnIndex + 1] +
-            rightDiagonalShortGradient[SGO_MidBot][columnIndex] + rightDiagonalShortGradient[SGO_Top][columnIndex]) / 2;
-    directionGradients[BGD_SouthWest] = rightDiagonalLongGradient[LGO_Mid][columnIndex - 1] + rightDiagonalLongGradient[LGO_Bot][columnIndex + 2] +
-            (rightDiagonalShortGradient[SGO_MidTop][columnIndex - 1] + rightDiagonalShortGradient[SGO_MidBot][columnIndex - 2] +
-            rightDiagonalShortGradient[SGO_MidBot][columnIndex] + rightDiagonalShortGradient[SGO_Bot][columnIndex - 1]) / 2;
+        (rightDiagonalShortGradient[SGO_MidTop][columnIndex - 1] + rightDiagonalShortGradient[SGO_MidTop][columnIndex + 1] +
+        rightDiagonalShortGradient[SGO_MidBot][columnIndex] + rightDiagonalShortGradient[SGO_Top][columnIndex]) / 2;
+    directionGradients[BGD_SouthWest] = rightDiagonalLongGradient[LGO_Mid][columnIndex - 1] + rightDiagonalLongGradient[LGO_Bot][columnIndex - 2] +
+        (rightDiagonalShortGradient[SGO_MidTop][columnIndex - 1] + rightDiagonalShortGradient[SGO_MidBot][columnIndex - 2] +
+        rightDiagonalShortGradient[SGO_MidBot][columnIndex] + rightDiagonalShortGradient[SGO_Bot][columnIndex - 1]) / 2;
     directionGradients[BGD_SouthEast] = leftDiagonalLongGradient[LGO_Mid][columnIndex + 1] + leftDiagonalLongGradient[LGO_Bot][columnIndex + 2] +
-            (leftDiagonalShortGradient[SGO_MidTop][columnIndex + 1] + leftDiagonalShortGradient[SGO_MidBot][columnIndex] +
-            leftDiagonalShortGradient[SGO_MidBot][columnIndex + 2] + leftDiagonalShortGradient[SGO_Bot][columnIndex + 1]) / 2;
+        (leftDiagonalShortGradient[SGO_MidTop][columnIndex + 1] + leftDiagonalShortGradient[SGO_MidBot][columnIndex] +
+        leftDiagonalShortGradient[SGO_MidBot][columnIndex + 2] + leftDiagonalShortGradient[SGO_Bot][columnIndex + 1]) / 2;
 }
 
 // Подсчет недиагональных градиентов по направлению
 void VNG::calcNonDiagonalDirectionGradients(size_t columnIndex) {
     directionGradients[BGD_North] = verticalGradient[LGO_Top][columnIndex] + verticalGradient[LGO_Mid][columnIndex] +
-                                    (verticalGradient[LGO_Top][columnIndex - 1] + verticalGradient[LGO_Mid][columnIndex - 1] +
-                                    verticalGradient[LGO_Top][columnIndex + 1] + verticalGradient[LGO_Mid][columnIndex + 1]) / 2;
+        (verticalGradient[LGO_Top][columnIndex - 1] + verticalGradient[LGO_Mid][columnIndex - 1] +
+        verticalGradient[LGO_Top][columnIndex + 1] + verticalGradient[LGO_Mid][columnIndex + 1]) / 2;
     directionGradients[BGD_South] = verticalGradient[LGO_Bot][columnIndex] + verticalGradient[LGO_Mid][columnIndex] +
-                                    (verticalGradient[LGO_Bot][columnIndex - 1] + verticalGradient[LGO_Mid][columnIndex - 1] +
-                                    verticalGradient[LGO_Bot][columnIndex + 1] + verticalGradient[LGO_Mid][columnIndex + 1]) / 2;
+        (verticalGradient[LGO_Bot][columnIndex - 1] + verticalGradient[LGO_Mid][columnIndex - 1] +
+        verticalGradient[LGO_Bot][columnIndex + 1] + verticalGradient[LGO_Mid][columnIndex + 1]) / 2;
     directionGradients[BGD_West] = horizontalGradient[LGO_Mid][columnIndex] + horizontalGradient[LGO_Mid][columnIndex + 1] +
-                                   (horizontalGradient[LGO_Top][columnIndex] + horizontalGradient[LGO_Top][columnIndex + 1] +
-                                   horizontalGradient[LGO_Bot][columnIndex] + horizontalGradient[LGO_Bot][columnIndex + 1]) / 2;
+        (horizontalGradient[LGO_Top][columnIndex] + horizontalGradient[LGO_Top][columnIndex + 1] +
+        horizontalGradient[LGO_Bot][columnIndex] + horizontalGradient[LGO_Bot][columnIndex + 1]) / 2;
     directionGradients[BGD_East] = horizontalGradient[LGO_Mid][columnIndex + 1] + horizontalGradient[LGO_Mid][columnIndex + 2] +
-                                   (horizontalGradient[LGO_Top][columnIndex + 1] + horizontalGradient[LGO_Top][columnIndex + 2] +
-                                   horizontalGradient[LGO_Bot][columnIndex + 1] + horizontalGradient[LGO_Bot][columnIndex + 2]) / 2;
+        (horizontalGradient[LGO_Top][columnIndex + 1] + horizontalGradient[LGO_Top][columnIndex + 2] +
+        horizontalGradient[LGO_Bot][columnIndex + 1] + horizontalGradient[LGO_Bot][columnIndex + 2]) / 2;
 }
 
 CMetrics CalculateMetrics(const CRGBImage& recoveredImage, const CRGBImage& referenceImage) {
@@ -380,36 +432,12 @@ CMetrics CalculateMetrics(const CRGBImage& recoveredImage, const CRGBImage& refe
     double mse = 0.0;
     const CGrayValue* recoveredBuffer = grayRecovered->GetBuffer();
     const CGrayValue* referenceBuffer = grayReference->GetBuffer();
+
     for (size_t pixelIndex = 0; pixelIndex < imageSize; ++pixelIndex) {
-        mse += std::pow(recoveredBuffer[pixelIndex].Components[0] - referenceBuffer[pixelIndex].Components[0], 2);
+        mse += std::pow(recoveredBuffer[pixelIndex].Components[0] - referenceBuffer[pixelIndex].Components[0], 2) / imageSize;
     }
-    mse /= imageSize;
+
     const double psnr = 10 * std::log10(pow(255, 2) / mse);
     return CMetrics(mse, psnr);
 }
 
-CMetrics CalculateCuttedMetrics(const CRGBImage& recoveredImage, const CRGBImage& referenceImage) {
-    std::shared_ptr<CGrayImage> grayRecovered = ConvertRGBImageToGray(recoveredImage);
-    std::shared_ptr<CGrayImage> grayReference = ConvertRGBImageToGray(referenceImage);
-    const size_t width = grayRecovered->GetWidth();
-    const size_t height = grayRecovered->GetHeight();
-    assert(width == grayReference->GetWidth());
-    assert(height == grayReference->GetHeight());
-    const size_t imageSize = width * height;
-    double mse = 0.0;
-    const CGrayValue* recoveredBuffer = grayRecovered->GetBuffer();
-    const CGrayValue* referenceBuffer = grayReference->GetBuffer();
-    recoveredBuffer += 2 * width;
-    referenceBuffer += 2 * width;
-    for (size_t rowIndex = 2; rowIndex < height - 2; ++rowIndex) {
-        for (size_t columnIndex = 2; columnIndex < width - 2; ++columnIndex) {
-            mse += std::pow(recoveredBuffer[columnIndex].Components[0] - referenceBuffer[columnIndex].Components[0], 2);
-        }
-        recoveredBuffer += width;
-        referenceBuffer += width;
-    }
-
-    mse /= ((height - 2) * (width - 2));
-    const double psnr = 10 * std::log10(pow(255, 2) / mse);
-    return CMetrics(mse, psnr);
-}

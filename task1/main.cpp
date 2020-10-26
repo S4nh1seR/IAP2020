@@ -14,13 +14,13 @@ int main() {
     recovered->SaveToFile("./recovered.bmp");
 
     CRGBImage reference("./source_images/Original.bmp");
-    const CMetrics& metrics = CalculateCuttedMetrics(*recovered, reference);
+    const CMetrics& metrics = CalculateMetrics(*recovered, reference);
 
     const double timeDiff = static_cast<double>( end - start );
     const double timeInSeconds = timeDiff / CLOCKS_PER_SEC;
     const size_t width = reference.GetWidth();
     const size_t height = reference.GetHeight();
-    const double relativeTime = timeInSeconds / ((width - 2) * (height - 2)) / 1000;
+    const double relativeTime = timeInSeconds / (width * height) / 1000;
     std::cout.precision(3);
     std::cout << "Full time: " << timeInSeconds << " seconds" << std::endl;
     std::cout << "Relative time: " << relativeTime << " msec/MP" << std::endl;

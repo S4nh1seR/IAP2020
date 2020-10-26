@@ -33,6 +33,8 @@ private:
     // Буффер с данными серого CFA изображения
     const uint8_t* cfaBuffer;
 
+    uint8_t* cfaExpanded;
+
     // Для удобной индексации кэшированных строк
     enum TLineOrder : unsigned char {
         LO_BeforePrev,
@@ -78,19 +80,19 @@ private:
     // Градиенты по всем направлениям в рассматриваемой точке
     uint16_t directionGradients[BGD_Count];
 
+    void prepareExpandedImage();
     void calcVerticalGradient(const uint8_t* firstLine, const uint8_t* secondLine, TLongGradientsOrder gradType);
     void calcHorizontalGradient(const uint8_t* line, TLongGradientsOrder gradType);
     void calcDiagonalGradient(const uint8_t* firstLine, const uint8_t* secondLine, bool isShort, bool isLeft,
-                              size_t gradIndex);
-
+        size_t gradIndex);
     void calcDirectionGradientsForGreen(size_t columnIndex);
     void calcDirectionGradientsForNotGreen(size_t columnIndex);
     void calcNonDiagonalDirectionGradients(size_t columnIndex);
     uint32_t getGradientThreshold() const;
     void interpolateColorsForGreen(size_t columnIndex, uint32_t gradientThreshold, TRGBComponent horizontalOtherColor,
-                                        TRGBComponent verticalOtherColor);
+        TRGBComponent verticalOtherColor);
     void interpolateColorsForNotGreen(size_t columnIndex, uint32_t gradientThreshold, TRGBComponent centralColor,
-                                           TRGBComponent otherNotGreenColor);
+        TRGBComponent otherNotGreenColor);
     void updateGradients();
     void moveCache();
 };

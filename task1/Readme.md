@@ -1,4 +1,4 @@
-###Задание 1 - алгоритм demosaicing-а VNG
+### Задание 1 - алгоритм demosaicing-а VNG
 
 Full time: 0.367 seconds
 

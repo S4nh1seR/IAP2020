@@ -1,9 +1,9 @@
-Задание 1 - алгоритм demosaicing-а VNG
+###Задание 1 - алгоритм demosaicing-а VNG
 
-Full time: 0.364 seconds
+Full time: 0.367 seconds
 
-Relative time: 4.21e-11 msec/MP
+Relative time: 4.24e-11 msec/MP
 
-MSE: 167
+MSE: 158
 
-PSNR: 25.9
+PSNR: 26.1

@@ -70,7 +70,6 @@ std::shared_ptr<CRGBImage> VNG::RecoverImage() {
     calcDiagonalGradient(cfaLines[LO_Prev], cfaLines[LO_Curr], isShort, !isLeft, SGO_MidTop);
     calcDiagonalGradient(cfaLines[LO_Curr], cfaLines[LO_Next], isShort, !isLeft, SGO_MidBot);
 
-
     currRecoveredLine = recoveredBuffer;
 
     for (size_t rowIndex = 0; rowIndex < height; ++rowIndex, currRecoveredLine += width) {
@@ -241,7 +240,6 @@ void VNG::interpolateColorsForNotGreen(size_t columnIndex, uint32_t gradientThre
     currRecoveredLine[columnIndex][centralColor] = {cfaLines[LO_Curr][columnIndex]};
     currRecoveredLine[columnIndex][otherNotGreenColor] = {color_cast(cfaLines[LO_Curr][columnIndex] + (colorSum[otherNotGreenColor] - colorSum[centralColor]) / gradientsNumber)};
     currRecoveredLine[columnIndex][RGBC_Green] = {color_cast(cfaLines[LO_Curr][columnIndex] + (colorSum[RGBC_Green] - colorSum[centralColor]) / gradientsNumber)};
-
 }
 
 // Интерполяция зеленых точек
@@ -261,26 +259,26 @@ void VNG::interpolateColorsForGreen(size_t columnIndex, uint32_t gradientThresho
     if (directionGradients[BGD_NorthWest] <= gradientThreshold) {
         ++gradientsNumber;
         colorSum[RGBC_Green] += cfaLines[LO_Prev][columnIndex - 1];
-        colorSum[horizontalOtherColor] += (cfaLines[LO_Prev][columnIndex - 2] + cfaLines[LO_Prev][columnIndex]) / 2;
-        colorSum[verticalOtherColor] += (cfaLines[LO_Curr][columnIndex - 1] + cfaLines[LO_BeforePrev][columnIndex - 1]) / 2;
+        colorSum[verticalOtherColor] += (cfaLines[LO_Prev][columnIndex - 2] + cfaLines[LO_Prev][columnIndex]) / 2;
+        colorSum[horizontalOtherColor] += (cfaLines[LO_Curr][columnIndex - 1] + cfaLines[LO_BeforePrev][columnIndex - 1]) / 2;
     }
     if (directionGradients[BGD_NorthEast] <= gradientThreshold) {
         ++gradientsNumber;
         colorSum[RGBC_Green] += cfaLines[LO_Prev][columnIndex + 1];
-        colorSum[horizontalOtherColor] += (cfaLines[LO_Prev][columnIndex + 2] + cfaLines[LO_Prev][columnIndex]) / 2;
-        colorSum[verticalOtherColor] += (cfaLines[LO_Curr][columnIndex + 1] + cfaLines[LO_BeforePrev][columnIndex + 1]) / 2;
+        colorSum[verticalOtherColor] += (cfaLines[LO_Prev][columnIndex + 2] + cfaLines[LO_Prev][columnIndex]) / 2;
+        colorSum[horizontalOtherColor] += (cfaLines[LO_Curr][columnIndex + 1] + cfaLines[LO_BeforePrev][columnIndex + 1]) / 2;
     }
     if (directionGradients[BGD_SouthWest] <= gradientThreshold) {
         ++gradientsNumber;
         colorSum[RGBC_Green] += cfaLines[LO_Next][columnIndex - 1];
-        colorSum[horizontalOtherColor] += (cfaLines[LO_Next][columnIndex - 2] + cfaLines[LO_Next][columnIndex]) / 2;
-        colorSum[verticalOtherColor] += (cfaLines[LO_Curr][columnIndex - 1] + cfaLines[LO_AfterNext][columnIndex - 1]) / 2;
+        colorSum[verticalOtherColor] += (cfaLines[LO_Next][columnIndex - 2] + cfaLines[LO_Next][columnIndex]) / 2;
+        colorSum[horizontalOtherColor] += (cfaLines[LO_Curr][columnIndex - 1] + cfaLines[LO_AfterNext][columnIndex - 1]) / 2;
     }
     if (directionGradients[BGD_SouthEast] <= gradientThreshold) {
         ++gradientsNumber;
         colorSum[RGBC_Green] += cfaLines[LO_Next][columnIndex + 1];
-        colorSum[horizontalOtherColor] += (cfaLines[LO_Next][columnIndex + 2] + cfaLines[LO_Next][columnIndex]) / 2;
-        colorSum[verticalOtherColor] += (cfaLines[LO_Curr][columnIndex + 1] + cfaLines[LO_AfterNext][columnIndex + 1]) / 2;
+        colorSum[verticalOtherColor] += (cfaLines[LO_Next][columnIndex + 2] + cfaLines[LO_Next][columnIndex]) / 2;
+        colorSum[horizontalOtherColor] += (cfaLines[LO_Curr][columnIndex + 1] + cfaLines[LO_AfterNext][columnIndex + 1]) / 2;
     }
     if (directionGradients[BGD_North] <= gradientThreshold) {
         ++gradientsNumber;
@@ -291,7 +289,7 @@ void VNG::interpolateColorsForGreen(size_t columnIndex, uint32_t gradientThresho
     }
     if (directionGradients[BGD_South] <= gradientThreshold) {
         ++gradientsNumber;
-        colorSum[verticalOtherColor] += cfaLines[LO_Next][columnIndex - 1];
+        colorSum[verticalOtherColor] += cfaLines[LO_Next][columnIndex];
         colorSum[horizontalOtherColor] += (cfaLines[LO_Curr][columnIndex - 1] + cfaLines[LO_Curr][columnIndex + 1] +
             cfaLines[LO_AfterNext][columnIndex - 1] + cfaLines[LO_AfterNext][columnIndex + 1]) / 4;
         colorSum[RGBC_Green] += (cfaLines[LO_Curr][columnIndex] + cfaLines[LO_AfterNext][columnIndex]) / 2;
@@ -432,6 +430,7 @@ CMetrics CalculateMetrics(const CRGBImage& recoveredImage, const CRGBImage& refe
     double mse = 0.0;
     const CGrayValue* recoveredBuffer = grayRecovered->GetBuffer();
     const CGrayValue* referenceBuffer = grayReference->GetBuffer();
+
 
     for (size_t pixelIndex = 0; pixelIndex < imageSize; ++pixelIndex) {
         mse += std::pow(recoveredBuffer[pixelIndex].Components[0] - referenceBuffer[pixelIndex].Components[0], 2) / imageSize;

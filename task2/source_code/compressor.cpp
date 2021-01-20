@@ -244,6 +244,8 @@ void CFractalImageCompressor::prepareDownDValues() {
     for (size_t rowIndex = 0; rowIndex < dBlocksNumberRoot; ++rowIndex) {
         for (size_t columnIndex = 0; columnIndex < dBlocksNumberRoot; ++columnIndex, ++dBlockIndex) {
             size_t index = 0;
+            downDSumTable[dBlockIndex] = 0;
+            downDSqSumTable[dBlockIndex] = 0;
             for (size_t dBlockRow = 0; dBlockRow < rBlockSize; ++dBlockRow) {
                 for (size_t dBlockColumn = 0; dBlockColumn < rBlockSize; ++dBlockColumn, ++index) {
                     auto topLeft = topLeftDBlockPtr + 2 * dBlockRow * size + 2 * dBlockColumn;
@@ -270,25 +272,25 @@ int CFractalImageCompressor::calculateIntensities(int* subBlockIntensities, cons
     subBlockIntensities[SBO_TopLeft] = 0;
     for (size_t dBlockRow = 0; dBlockRow < subBlockSize; ++dBlockRow) {
         for (size_t dBlockColumn = 0; dBlockColumn < subBlockSize; ++dBlockColumn) {
-            subBlockIntensities[SBO_TopLeft] += *(buffer + 2 * dBlockRow * size + 2 * dBlockColumn);
+            subBlockIntensities[SBO_TopLeft] += *(buffer + dBlockRow * size + dBlockColumn);
         }
     }
     subBlockIntensities[SBO_TopRight] = 0;
     for (size_t dBlockRow = 0; dBlockRow < subBlockSize; ++dBlockRow) {
         for (size_t dBlockColumn = subBlockSize; dBlockColumn < fullBlockSize; ++dBlockColumn) {
-            subBlockIntensities[SBO_TopRight] += *(buffer + 2 * dBlockRow * size + 2 * dBlockColumn);
+            subBlockIntensities[SBO_TopRight] += *(buffer + dBlockRow * size + dBlockColumn);
         }
     }
     subBlockIntensities[SBO_BotLeft] = 0;
     for (size_t dBlockRow = subBlockSize; dBlockRow < fullBlockSize; ++dBlockRow) {
         for (size_t dBlockColumn = 0; dBlockColumn < subBlockSize; ++dBlockColumn) {
-            subBlockIntensities[SBO_BotLeft] += *(buffer + 2 * dBlockRow * size + 2 * dBlockColumn);
+            subBlockIntensities[SBO_BotLeft] += *(buffer + dBlockRow * size + dBlockColumn);
         }
     }
     subBlockIntensities[SBO_BotRight] = 0;
     for (size_t dBlockRow = subBlockSize; dBlockRow < fullBlockSize; ++dBlockRow) {
         for (size_t dBlockColumn = subBlockSize; dBlockColumn < fullBlockSize; ++dBlockColumn) {
-            subBlockIntensities[SBO_BotRight] += *(buffer + 2 * dBlockRow * size + 2 * dBlockColumn);
+            subBlockIntensities[SBO_BotRight] += *(buffer + dBlockRow * size + dBlockColumn);
         }
     }
     const int blockArea = fullBlockSize * fullBlockSize;

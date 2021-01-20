@@ -2,6 +2,7 @@
 #include <cassert>
 #include <fstream>
 #include <random>
+#include <iostream>
 
 CFractalImageDecompressor::CFractalImageDecompressor(const std::string& pathToCompressed) {
     loadFromBinaryFile(pathToCompressed);

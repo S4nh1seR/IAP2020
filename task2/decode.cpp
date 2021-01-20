@@ -1,24 +1,32 @@
 #include <iostream>
 #include <time.h>
+#include <fstream>
+
 #include "image.h"
 #include "fractal.h"
 
 int main(int argc, char* argv[]) {
-    if (argc < 3 || argc > 5) {
+    if (argc < 3 || argc > 6) {
         std::cerr << "Invalid number of arguments!" << std::endl;
     }
     const std::string encodedBinaryPath(argv[1]);
-    const std::string resultsFolder(argv[2]);
+    const std::string resultImagePath = std::string(argv[2]) + ".bmp";
+    const std::string resultMetricPath = std::string(argv[2]) + ".txt";
 
     CGrayImage gray;
     if (argc >= 4) {
         gray.LoadFromFile(argv[3]);
     }
 
+    std::string resultsFolder;
+    if (argc >= 5) {
+        resultsFolder = std::string(argv[4]);
+    }
+
     size_t decodeIterationsNumber = 8;
-    if (argc == 5) {
+    if (argc == 6) {
         try {
-            decodeIterationsNumber = std::stoi(argv[4]);
+            decodeIterationsNumber = std::stoi(argv[5]);
         } catch(...) {
             std::cerr << "Invalid fourth argument! Should define iterations number (8 by default).";
         }
@@ -45,7 +53,12 @@ int main(int argc, char* argv[]) {
         const CMetrics& resultMetrics = CalculateMetrics(*retrieved, gray);
         std::cout << "MSE: " << resultMetrics.MSE << std::endl;
         std::cout << "PSNR: " << resultMetrics.PSNR << std::endl;
+        std::ofstream out;
+        out.open(resultMetricPath);
+        out << resultMetrics.PSNR << std::endl;
+        out.close();
     }
+    retrieved->SaveToFile(resultImagePath);
 
     return 0;
 }

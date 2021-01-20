@@ -31,19 +31,20 @@ FractalEncoder ./source_images/Lena.bmp ./results/Lena[R=8,FastMode]/encoded.fra
 FractalEncoder ./source_images/Lena.bmp ./results/Lena[R=4]/encoded.frac
 
 ### 2. Декодер
-FractalDecoder PathToEncoded PathToResultsFolder <ReferencePath(optional)> <IterNumber(optional, default=8)>
+FractalDecoder PathToEncoded PathToResult <ReferencePath(optional)> <PathToResultsFolder(optional)> <IterNumber(optional, default=8)>
 
 Параметры:
 1. PathToEncoded - путь к файлу с закодированным изображением.
-2. PathToResultsFolder - директория, куда сохранять декодированные изображения.
+2. PathToResult - имя файла для сохранения итогового результата (без расширения .bmp)
 3. ReferencePath - путь к оригинальному изображению, передается, если нужно посчитать метрики (MSE/PSNR).
+2. PathToResultsFolder - директория, куда сохранять промежуточные изображения и метрики.
 4. IterNumber - число итераций при восстановлении.
 
 Запуск на примере изображения Lena.bmp:
 
-FractalDecoder ./results/Lena[R=8,FastMode]/encoded.frac ./results/Lena[R=8,FastMode] ./source_images/Lena.bmp 10
+FractalDecoder ./results/Lena[R=8,FastMode]/encoded.frac ./results/Lena[R=8,FastMode]/decoded ./source_images/Lena.bmp ./results/Lena[R=8,FastMode] 10
 
-FractalDecoder ./results/Lena[R=4]/encoded.frac ./results/Lena[R=4]
+FractalDecoder ./results/Lena[R=4]/encoded.frac ./res_lena
 
 ## Результаты работы:
 

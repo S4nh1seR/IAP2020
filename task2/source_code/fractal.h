@@ -1,6 +1,7 @@
 #pragma once
 
 #include "image.h"
+#include <memory>
 #include <string>
 #include <limits>
 

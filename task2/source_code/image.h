@@ -22,8 +22,8 @@ public:
     uint8_t* GetBuffer() { return dataBuffer; }
     const uint8_t* GetBuffer() const { return dataBuffer; }
     // Сериализация изображения в/из файла
-    bool LoadFromFile(const std::string& sourceFilePath);
-    bool SaveToFile(const std::string& targetFilePath) const;
+    void LoadFromFile(const std::string& sourceFilePath);
+    void SaveToFile(const std::string& targetFilePath) const;
 
     void SwapImage(CGrayImage& other);
 

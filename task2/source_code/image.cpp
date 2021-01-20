@@ -26,7 +26,7 @@ CGrayImage::~CGrayImage() {
     delete [] dataBuffer;
 }
 
-bool CGrayImage::LoadFromFile(const std::string& sourceFilePath) {
+void CGrayImage::LoadFromFile(const std::string& sourceFilePath) {
     const cv::Mat cvImage = imread(sourceFilePath, cv::IMREAD_GRAYSCALE);
     if (dataBuffer != nullptr) {
         delete [] dataBuffer;
@@ -38,7 +38,7 @@ bool CGrayImage::LoadFromFile(const std::string& sourceFilePath) {
     std::copy_n(cvImage.data, fullSize, reinterpret_cast<decltype(cvImage.data)>(dataBuffer));
 }
 
-bool CGrayImage::SaveToFile(const std::string& targetFilePath) const {
+void CGrayImage::SaveToFile(const std::string& targetFilePath) const {
     const cv::Mat cvImage(height, width, CV_8UC1, dataBuffer);
     imwrite(targetFilePath, cvImage);
 }

@@ -1,2 +1,2 @@
-deltaX: -0.277
-deltaY: -8.610
+deltaX: -5.853
+deltaY: -7.197

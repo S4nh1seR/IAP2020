@@ -10,36 +10,39 @@ argparser = argparse.ArgumentParser()
 argparser.add_argument('--frames_path', '-fp', type=str, required=True)
 argparser.add_argument('--results_path', '-rp', type=str, required=True)
 
-def visualize_ransac(x, y, found_x, found_y, thres, inliers_mask, vis_path):
+def visualize_ransac(x, y, center, model, thres, inliers_mask, vis_path):
     """ Визуализация метода RANSAC на графике
     """
+    center_x, center_y = center
+    model_x, model_y = model
+
     inliers_x, inliers_y = x[inliers_mask], y[inliers_mask]
     outliers_x, outliers_y = x[~inliers_mask], y[~inliers_mask]
     inliers_number = np.sum(inliers_mask)
     outliers_number = inliers_mask.shape[0] - inliers_number
     figure, axes = plt.subplots()
-    border_circle = plt.Circle((found_x, found_y), radius=thres, color='g', fill=False, label='Border')
+    border_circle = plt.Circle(center, radius=thres, color='g', fill=False, label='Border')
     inliers, = axes.plot(inliers_x, inliers_y, 'ro', color='r', markersize=1,
                          label="Inliers ({})".format(inliers_number))
     outliers, = axes.plot(outliers_x, outliers_y, 'ro', color='b', markersize=1,
                           label="Outliers ({})".format(outliers_number))
-    model = axes.scatter(found_x, found_y, s=25, color='k', label="Model")
+    model = axes.scatter(model_x, model_y, s=25, color='k', label="Model")
     axes.add_artist(border_circle)
 
     # Ограничения на диапазон координат по каждой координате в картинке-визуализации
     lower_quantile = 0.2
     upper_quantile = 0.8
     min_radius_ratio = 2
-    lowX = min(np.quantile(x, q=lower_quantile), found_x - min_radius_ratio * thres)
-    uppX = max(np.quantile(x, q=upper_quantile), found_x + min_radius_ratio * thres)
-    lowY = min(np.quantile(y, q=lower_quantile), found_y - min_radius_ratio * thres)
-    uppY = max(np.quantile(y, q=upper_quantile), found_y + min_radius_ratio * thres)
+    lowX = min(np.quantile(x, q=lower_quantile), center_x - min_radius_ratio * thres)
+    uppX = max(np.quantile(x, q=upper_quantile), center_x + min_radius_ratio * thres)
+    lowY = min(np.quantile(y, q=lower_quantile), center_y - min_radius_ratio * thres)
+    uppY = max(np.quantile(y, q=upper_quantile), center_y + min_radius_ratio * thres)
     axes.set_xlim([lowX, uppX])
     axes.set_ylim([lowY, uppY])
 
     axes.legend(handles=[model, inliers, outliers, border_circle])
     axes.set(xlabel='$\Delta X$', ylabel=r'$\Delta Y$')
-    axes.set_title('RANSAC evaluated shift: ($\Delta X, \Delta Y$)=({:.3f}, {:.3f})'.format(found_x, found_y))
+    axes.set_title('RANSAC evaluated shift: ($\Delta X, \Delta Y$)=({:.3f}, {:.3f})'.format(model_x, model_y))
     plt.savefig(vis_path)
 
 def estimate_by_ransac(anchor_keypoints, keypoints, matches, vis_path=None):
@@ -59,7 +62,7 @@ def estimate_by_ransac(anchor_keypoints, keypoints, matches, vis_path=None):
     # Сам RANSAC будем использовать так:
     # Каждую отдельную точку (пару ключей) рассматриваем как модель сдвига
     # Оценивающая функция для определения inlier/outlier - евклидово расстояние до выбранной точки
-    l2_thres = 2.0
+    l2_thres = 8.0
     best_x, best_y = None, None
     best_inliers_number, best_inliers_mask = 0, None
     for i, (x_src, y_src) in enumerate(zip(x, y)):
@@ -76,10 +79,13 @@ def estimate_by_ransac(anchor_keypoints, keypoints, matches, vis_path=None):
             best_y = y_src
             best_inliers_mask = inliers_mask
 
+    # уточняем модель по inlier-м
+    model_x = np.sum(x * best_inliers_mask) / best_inliers_number
+    model_y = np.sum(y * best_inliers_mask) / best_inliers_number
     # Визуализируем, если требуется
     if vis_path is not None:
-        visualize_ransac(x, y, best_x, best_y, l2_thres, best_inliers_mask, vis_path)
-    return (best_x, best_y)
+        visualize_ransac(x, y, (best_x, best_y), (model_x, model_y), l2_thres, best_inliers_mask, vis_path)
+    return (model_x, model_y)
 
 
 def estimate_shift(anchor_keypoints, anchor_descriptors, keypoints, descriptors, vis_path=None):

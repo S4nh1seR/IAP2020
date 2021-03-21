@@ -1,0 +1,11 @@
+2 frames processsed, elapsed time:	 2.587213471
+3 frames processsed, elapsed time:	 5.081229699
+4 frames processsed, elapsed time:	 7.4116904450000005
+5 frames processsed, elapsed time:	 9.653449886
+6 frames processsed, elapsed time:	 11.853840846
+7 frames processsed, elapsed time:	 14.073649761999999
+8 frames processsed, elapsed time:	 16.282860751999998
+9 frames processsed, elapsed time:	 18.56814009
+10 frames processsed, elapsed time:	 20.860246159
+11 frames processsed, elapsed time:	 23.091597546
+12 frames processsed, elapsed time:	 25.279871625

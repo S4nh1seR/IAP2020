@@ -1,0 +1,2 @@
+deltaX: 0.320
+deltaY: 0.786

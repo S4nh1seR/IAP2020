@@ -1,0 +1,1 @@
+Detector time (per point): 4.3260141499112805e-06

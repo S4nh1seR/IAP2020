@@ -1,0 +1,11 @@
+Frame 1 inliers ratio: 0.783
+Frame 2 inliers ratio: 0.772
+Frame 3 inliers ratio: 0.762
+Frame 4 inliers ratio: 0.707
+Frame 5 inliers ratio: 0.711
+Frame 6 inliers ratio: 0.700
+Frame 7 inliers ratio: 0.697
+Frame 8 inliers ratio: 0.665
+Frame 9 inliers ratio: 0.598
+Frame 10 inliers ratio: 0.642
+Frame 11 inliers ratio: 0.672

@@ -27,7 +27,7 @@ https://drive.google.com/drive/folders/1VyYlaSKrsqBYMqyghB2Kg4ulhn2NtYlC?usp=sha
 
 ### Пример работы:
 
-![example](./results_test1/marked_viz/0039.jpg)
+![example](./example.jpg)
 
 ### Метрики на имеющейся выборке:
 

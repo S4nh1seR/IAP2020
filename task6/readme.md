@@ -22,6 +22,9 @@ python detect_finder_patterns.py -ip ./images_test2 -rp ./results_test2 -mp ./an
 
 ## Результаты работы
 
+Результаты работы на выданной выборке находятся [здесь](
+https://drive.google.com/drive/folders/1VyYlaSKrsqBYMqyghB2Kg4ulhn2NtYlC?usp=sharing).
+
 ### Пример работы:
 
 ![example](./results_test1/marked_viz/0039.jpg)

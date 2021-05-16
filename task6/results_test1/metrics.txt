@@ -1,0 +1,6 @@
+Precision: 1.0000
+Recall: 0.9722
+F-measure: 0.9859
+True positive: 140
+False positive: 0
+False negative: 4

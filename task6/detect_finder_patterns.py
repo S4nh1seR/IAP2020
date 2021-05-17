@@ -199,7 +199,7 @@ def build_pattern_borders(center_masks, ext_masks, max_mod_size):
 
 def prepare_images(image):
     gray_image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-    binarized_image = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 63, 10)
+    binarized_image = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 129, 10)
     processed_binarized = cv2.medianBlur(binarized_image, 5)
     return gray_image, processed_binarized
 
